@@ -7,13 +7,14 @@ Created on 4 Jul 2016
 import struct
 import time
 
+from scs_core.data.localized_datetime import LocalizedDatetime
 from scs_core.particulate.opc_datum import OPCDatum
+
 from scs_dfe.board.io import IO
+
 from scs_host.lock.lock import Lock
 from scs_host.sys.host_spi import HostSPI
 
-
-# TODO: enable max 20 second interval - needs separate process?
 
 # --------------------------------------------------------------------------------------------------------------------
 
@@ -22,14 +23,18 @@ class OPCN2(object):
     classdocs
     """
 
-    BOOT_TIME =                         4
+    BOOT_TIME =                          4       # seconds
+    START_TIME =                         5       # seconds
+    STOP_TIME =                          2       # seconds
+
+    MIN_SAMPLE_PERIOD =                  5       # seconds
+    MAX_SAMPLE_PERIOD =                 10       # seconds
+    DEFAULT_SAMPLE_PERIOD =             10       # seconds
 
     # ----------------------------------------------------------------------------------------------------------------
 
     __FLOW_RATE_VERSION =               16
 
-    __START_TIME =                      5
-    __STOP_TIME =                       2
 
     __FAN_UP_TIME =                     10
     __FAN_DOWN_TIME =                   2
@@ -113,7 +118,7 @@ class OPCN2(object):
 
             # start...
             self.__spi.xfer([OPCN2.__CMD_POWER, OPCN2.__CMD_POWER_ON])
-            time.sleep(OPCN2.__START_TIME)
+            time.sleep(OPCN2.START_TIME)
 
             # clear histogram...
             self.__spi.xfer([OPCN2.__CMD_READ_HISTOGRAM])
@@ -135,7 +140,7 @@ class OPCN2(object):
             self.__spi.open()
 
             self.__spi.xfer([OPCN2.__CMD_POWER, OPCN2.__CMD_POWER_OFF])
-            time.sleep(OPCN2.__STOP_TIME)
+            time.sleep(OPCN2.STOP_TIME)
 
         finally:
             time.sleep(OPCN2.__CMD_DELAY)
@@ -183,7 +188,9 @@ class OPCN2(object):
             pm2p5 = self.__read_float()
             pm10 = self.__read_float()
 
-            return OPCDatum(pm1, pm2p5, pm10, period, bins, bin_1_mtof, bin_3_mtof, bin_5_mtof, bin_7_mtof)
+            now = LocalizedDatetime.now()
+
+            return OPCDatum(now, pm1, pm2p5, pm10, period, bins, bin_1_mtof, bin_3_mtof, bin_5_mtof, bin_7_mtof)
 
         finally:
             time.sleep(OPCN2.__CMD_DELAY)

@@ -1,35 +1,30 @@
 """
-Created on 18 May 2017
+Created on 11 Jul 2017
 
 @author: Bruno Beloff (bruno.beloff@southcoastscience.com)
 
-the I2C address of the Pt1000 ADC
+settings for OPCMonitor
 
-example document:
-{"addr": "0x68"}        - Alpha Pi Eng, Alpha BB Eng without RTC
-{"addr": "0x69"}        - Alpha BB Eng with RTC
+example JSON:
+{"model": "N2", "sample-period": 10, "power-saving": false}
 """
 
 from collections import OrderedDict
 
 from scs_core.data.json import PersistentJSONable
 
-from scs_dfe.gas.mcp342x import MCP342X
+from scs_dfe.particulate.opc_monitor import OPCMonitor
+from scs_dfe.particulate.opc_n2 import OPCN2
 
 
 # --------------------------------------------------------------------------------------------------------------------
 
-class Pt1000Conf(PersistentJSONable):
+class OPCConf(PersistentJSONable):
     """
     classdocs
     """
 
-    DEFAULT_ADDR = 0x68             # the address used when there is no conf file
-
-
-    # ----------------------------------------------------------------------------------------------------------------
-
-    __FILENAME = "pt1000_conf.json"
+    __FILENAME = "opc_conf.json"
 
     @classmethod
     def filename(cls, host):
@@ -44,43 +39,37 @@ class Pt1000Conf(PersistentJSONable):
     # ----------------------------------------------------------------------------------------------------------------
 
     @classmethod
-    def __addr_str(cls, addr):
-        if addr is None:
-            return None
-
-        return "0x%02x" % addr
-
-
-    # ----------------------------------------------------------------------------------------------------------------
-
-    @classmethod
     def construct_from_jdict(cls, jdict):
         if not jdict:
-            return Pt1000Conf(cls.DEFAULT_ADDR)
+            return None
 
-        addr_str = jdict.get('addr')
+        model = jdict.get('model')
+        sample_period = jdict.get('sample-period')
+        power_saving = jdict.get('power-saving')
 
-        int_addr = None if addr_str is None else int(addr_str, 0)
-
-        return Pt1000Conf(int_addr)
+        return OPCConf(model, sample_period, power_saving)
 
 
     # ----------------------------------------------------------------------------------------------------------------
 
-    def __init__(self, addr):
+    def __init__(self, model, sample_period, power_saving):
         """
         Constructor
         """
-        self.__addr = addr          # int       I2C address of Pt1000 ADC
+        self.__model = model
+        self.__sample_period = int(sample_period)
+        self.__power_saving = bool(power_saving)
 
 
     # ----------------------------------------------------------------------------------------------------------------
 
-    def adc(self, gain, rate):
-        if self.addr is None:
-            return None
+    def opc_monitor(self):
+        if self.model == 'N2':
+            opc = OPCN2()
+        else:
+            raise ValueError('unknown model: %s' % self.model)
 
-        return MCP342X(self.addr, gain, rate)
+        return OPCMonitor(opc, self)
 
 
     # ----------------------------------------------------------------------------------------------------------------
@@ -92,8 +81,18 @@ class Pt1000Conf(PersistentJSONable):
     # ----------------------------------------------------------------------------------------------------------------
 
     @property
-    def addr(self):
-        return self.__addr
+    def model(self):
+        return self.__model
+
+
+    @property
+    def sample_period(self):
+        return self.__sample_period
+
+
+    @property
+    def power_saving(self):
+        return self.__power_saving
 
 
     # ----------------------------------------------------------------------------------------------------------------
@@ -101,7 +100,9 @@ class Pt1000Conf(PersistentJSONable):
     def as_json(self):
         jdict = OrderedDict()
 
-        jdict['addr'] = Pt1000Conf.__addr_str(self.__addr)
+        jdict['model'] = self.__model
+        jdict['sample-period'] = self.__sample_period
+        jdict['power-saving'] = self.__power_saving
 
         return jdict
 
@@ -109,4 +110,5 @@ class Pt1000Conf(PersistentJSONable):
     # ----------------------------------------------------------------------------------------------------------------
 
     def __str__(self, *args, **kwargs):
-        return "Pt1000Conf:{addr:%s}" % Pt1000Conf.__addr_str(self.addr)
+        return "OPCConf:{model:%s, sample_period:%s, power_saving:%s}" %  \
+               (self.model, self.sample_period, self.power_saving)
