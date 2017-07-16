@@ -1,34 +1,28 @@
 """
-Created on 18 May 2017
+Created on 16 Jul 2017
 
 @author: Bruno Beloff (bruno.beloff@southcoastscience.com)
 
-the I2C address of the Pt1000 ADC
+specifies which GPS receiver is present, if any
 
-example documents:
-{"addr": "0x68"}        - Alpha Pi Eng, Alpha BB Eng without RTC
-{"addr": "0x69"}        - Alpha BB Eng with RTC
+example JSON:
+{"model": null}
 """
 
 from collections import OrderedDict
 
 from scs_core.data.json import PersistentJSONable
-from scs_dfe.gas.mcp342x import MCP342X
+from scs_dfe.gps.pam7q import PAM7Q
 
 
 # --------------------------------------------------------------------------------------------------------------------
 
-class Pt1000Conf(PersistentJSONable):
+class GPSConf(PersistentJSONable):
     """
     classdocs
     """
 
-    DEFAULT_ADDR = 0x68             # the address used when there is no conf file
-
-
-    # ----------------------------------------------------------------------------------------------------------------
-
-    __FILENAME = "pt1000_conf.json"
+    __FILENAME = "gps_conf.json"
 
     @classmethod
     def filename(cls, host):
@@ -43,43 +37,34 @@ class Pt1000Conf(PersistentJSONable):
     # ----------------------------------------------------------------------------------------------------------------
 
     @classmethod
-    def __addr_str(cls, addr):
-        if addr is None:
-            return None
-
-        return "0x%02x" % addr
-
-
-    # ----------------------------------------------------------------------------------------------------------------
-
-    @classmethod
     def construct_from_jdict(cls, jdict):
         if not jdict:
-            return Pt1000Conf(cls.DEFAULT_ADDR)
+            return GPSConf(None)
 
-        addr_str = jdict.get('addr')
+        model = jdict.get('model')
 
-        int_addr = None if addr_str is None else int(addr_str, 0)
-
-        return Pt1000Conf(int_addr)
+        return GPSConf(model)
 
 
     # ----------------------------------------------------------------------------------------------------------------
 
-    def __init__(self, addr):
+    def __init__(self, model):
         """
         Constructor
         """
-        self.__addr = addr          # int       I2C address of Pt1000 ADC
+        self.__model = model
 
 
     # ----------------------------------------------------------------------------------------------------------------
 
-    def adc(self, gain, rate):
-        if self.addr is None:
+    def gps(self):
+        if self.model is None:
             return None
 
-        return MCP342X(self.addr, gain, rate)
+        if self.model == 'PAM7Q':
+            return PAM7Q()
+
+        raise ValueError('unknown model: %s' % self.model)
 
 
     # ----------------------------------------------------------------------------------------------------------------
@@ -91,8 +76,8 @@ class Pt1000Conf(PersistentJSONable):
     # ----------------------------------------------------------------------------------------------------------------
 
     @property
-    def addr(self):
-        return self.__addr
+    def model(self):
+        return self.__model
 
 
     # ----------------------------------------------------------------------------------------------------------------
@@ -100,7 +85,7 @@ class Pt1000Conf(PersistentJSONable):
     def as_json(self):
         jdict = OrderedDict()
 
-        jdict['addr'] = Pt1000Conf.__addr_str(self.__addr)
+        jdict['model'] = self.__model
 
         return jdict
 
@@ -108,4 +93,4 @@ class Pt1000Conf(PersistentJSONable):
     # ----------------------------------------------------------------------------------------------------------------
 
     def __str__(self, *args, **kwargs):
-        return "Pt1000Conf:{addr:%s}" % Pt1000Conf.__addr_str(self.addr)
+        return "GPSConf:{model:%s}" % self.model
