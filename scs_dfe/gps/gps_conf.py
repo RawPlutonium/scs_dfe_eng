@@ -12,6 +12,7 @@ example JSON:
 from collections import OrderedDict
 
 from scs_core.data.json import PersistentJSONable
+
 from scs_dfe.gps.pam7q import PAM7Q
 
 
@@ -27,11 +28,6 @@ class GPSConf(PersistentJSONable):
     @classmethod
     def filename(cls, host):
         return host.conf_dir() + cls.__FILENAME
-
-
-    @classmethod
-    def load_from_host(cls, host):
-        return cls.load_from_file(cls.filename(host))
 
 
     # ----------------------------------------------------------------------------------------------------------------
@@ -52,6 +48,8 @@ class GPSConf(PersistentJSONable):
         """
         Constructor
         """
+        super().__init__()
+
         self.__model = model
 
 
@@ -65,12 +63,6 @@ class GPSConf(PersistentJSONable):
             return PAM7Q()
 
         raise ValueError('unknown model: %s' % self.model)
-
-
-    # ----------------------------------------------------------------------------------------------------------------
-
-    def save(self, host):
-        PersistentJSONable.save(self, self.__class__.filename(host))
 
 
     # ----------------------------------------------------------------------------------------------------------------
